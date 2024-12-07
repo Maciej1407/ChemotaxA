@@ -65,9 +65,10 @@ class Cell():
 
     def get_position_history(self):
         return list(self.pos_history)
+    
 alpha = 400
-length = 700
-sim_time = 1
+length = 400
+sim_time = 5
 nodes = 250
 num_cells= 8
 
@@ -140,8 +141,8 @@ def calc_grad(nodes, u, w):
 
 @delayed
 def update_cell(c, u, dx, dy, counter):
-    c.update_pos_grad(u, dx, dy, 2, counter)
-    u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 10
+    c.update_pos_grad(u, dx, dy, 0.6, counter)
+    u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 2
     return c
 
 start = time.time()
@@ -152,7 +153,9 @@ while counter < sim_time : # O(t)
     if cellMarker:
         for mark in cellMarker: # O(n)
             mark.remove()
-            
+
+    u = calc_grad_np(u)
+
     tasks = [ delayed (update_cell)(c, u, dx, dy, counter) for c in cells ]
         
     
@@ -166,7 +169,7 @@ while counter < sim_time : # O(t)
     cellMarker = [axis.plot(cell.pos_y, cell.pos_x, 'wo', markersize=8)[0] for cell in cells]  
 
  
-#    plt.pause(0.01)
+    plt.pause(0.01)
     counter += dt
     
 end = time.time()
