@@ -69,48 +69,6 @@ def _compute_gradient(pos_x, pos_y, u, dx, dy, step = 1):
         grad_x, grad_y = 0, 0 
     
     return grad_x, grad_y
-#@jitclass(spec)
-""" class Cell():
-
-    def __init__(self, pos_x, pos_y):
-        self.pos_x = int(pos_x)
-        self.pos_y = int(pos_y)
-        self.pos_history = deque()
-        self.pos_history.append([0,self.pos_x,self.pos_y])
-    
-    def update_pos(self, grid_size, step = 1):
-        self.pos_x = np.clip(self.pos_x + np.random.randint(-step, step), 0, grid_size - 1)
-        self.pos_y = np.clip(self.pos_y + np.random.randint(-step, step), 0, grid_size - 1)
-
-
-   # @jit(nopython = True)
-    def compute_gradient(self, u, dx, dy, step = 1):
-        
-        grad_x, grad_y = _compute_gradient(self.pos_x, self.pos_y, u, dx, dy, step)
-        return grad_x, grad_y
-    
-    #@jit(nopython = True)
-    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, step=1,):
-        
-        grad_x, grad_y = self.compute_gradient(u, dx, dy)
-
-        rand_x = random.randint(-step, step)
-        rand_y = random.randint(-step, step)
-        # Scale gradient to influence movement
-        move_x = rand_x + grad_x * sensitivity
-        move_y = rand_y + grad_y * sensitivity
-
-        # Update cell position with stochastic movement, ensuring it stays within bounds
-        self.pos_x = np.clip(self.pos_x + int(move_x), 0, u.shape[0] - 1)
-        self.pos_y = np.clip(self.pos_y + int(move_y), 0, u.shape[1] - 1)
-
-        self.pos_history.append([time_curr, self.pos_x, self.pos_y])
-
-    def get_position_history(self):
-        return list(self.pos_history)
-     """
-
-
 
 class Cell_2():
     '''
@@ -163,29 +121,71 @@ class Cell_2():
         return grad_x, grad_y
     
     #@jit(nopython = True)
-    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, step=1):
+    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape ,step=1):
         
         grad_x, grad_y = self.compute_gradient(u, dx, dy)
 
+        # Random movement with gradient influence
         rand_x = random.randint(-step, step)
         rand_y = random.randint(-step, step)
 
-        # Scale gradient to influence movement
         move_x = int(rand_x + grad_x * sensitivity)
         move_y = int(rand_y + grad_y * sensitivity)
 
-        # Update cell position with stochastic movement, ensuring it stays within bounds
+        # Apply the movement to all points
+        mov_vector = np.array([move_y, move_x])
+        self.points += mov_vector
+        self.pos_x += move_x
+        self.pos_y += move_y
 
-        if self.default:
-            self.pos_x = np.clip(self.pos_x + move_x, 0, u.shape[0] - 1)
-            self.pos_y = np.clip(self.pos_y + move_y, 0, u.shape[1] - 1)
+        # Boundary values
+        x_min, x_max = 0, grid_shape[0] - 1
+        y_min, y_max = 0, grid_shape[1] - 1
 
-        else:
-            mov_vector = np.array([move_y, move_x])
-            self.pos_x = np.clip(self.pos_x + move_x, 0, u.shape[0] - 1)
-            self.pos_y = np.clip(self.pos_y + move_y, 0, u.shape[1] - 1)
-            self.points = np.clip(self.points + mov_vector, 0, u.shape[0] - 1)
- 
+        # Find points outside the grid
+        outside_points = self.points[
+            (self.points[:, 0] < x_min) | (self.points[:, 0] > x_max) |
+            (self.points[:, 1] < y_min) | (self.points[:, 1] > y_max)
+        ]
+
+        if outside_points.size > 0:
+            # Compute correction vector as the negative sum of out-of-bounds offsets
+            correction_vector = np.array([
+                -np.sum(outside_points[:, 0] - np.clip(outside_points[:, 0], x_min, x_max)),
+                -np.sum(outside_points[:, 1] - np.clip(outside_points[:, 1], y_min, y_max))
+            ])
+
+            # Apply correction to all points and the center
+            self.points += correction_vector
+            self.pos_x += correction_vector[1]
+            self.pos_y += correction_vector[0]
+
+        # Append the position to history
+        self.pos_history.append([time_curr + dt, self.pos_x, self.pos_y])
+        """   mov_vector = np.array([move_y, move_x])
+            
+            self.points = self.points + mov_vector
+
+            self.pos_x += move_x
+            self.pos_y += move_y
+
+            
+            lim_size = np.array(grid_shape)
+
+            x_min, x_max = 0, lim_size[0]
+            y_min, y_max = 0, lim_size[1]
+
+            temp = self.points
+
+            outside_points = temp[(temp[:, 0] < x_min) | (temp[:, 0] >= x_max) | (temp[:, 1] < y_min) | (temp[:, 1] >= y_max)]
+
+            if outside_points.size > 0:
+                correction_vector = np.sum(-outside_points, axis = 0)
+                self.points += correction_vector
+                self.pos_x += correction_vector[1]
+                self.pos_y += correction_vector[0]
+                 """
+
 
         self.pos_history.append([time_curr+dt, self.pos_x, self.pos_y])
 
@@ -246,7 +246,7 @@ plt.colorbar(pcm, ax=axis)
 
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
-cells = [Cell_2( int(nodes/ 2), int( nodes / 2), shape=["circle", 3] ) for _ in range(num_cells)]
+cells = [Cell_2( int(nodes/ 2), int( nodes / 2) ) for _ in range(num_cells)]
 
 counter = 0 
 
@@ -265,8 +265,8 @@ def calc_grad_np(u):
     return w
 
 @delayed
-def update_cell(c, u, dx, dy, counter, dt):
-    c.update_pos_grad(u, dx, dy, 0.6, counter, dt)
+def update_cell(c, u, dx, dy, counter, dt, grid_size):
+    c.update_pos_grad(u, dx, dy, 0.6, counter, dt, grid_size)
     u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 2
     return c
 
@@ -281,7 +281,7 @@ while counter < sim_time : # O(t)
 
     u = calc_grad_np(u) 
 
-    tasks = [ delayed (update_cell)(c, u, dx, dy, counter, dt) for c in cells ]
+    tasks = [ delayed (update_cell)(c, u, dx, dy, counter, dt, u.shape) for c in cells ]
         
     
     results = dask.compute(*tasks)
@@ -291,11 +291,14 @@ while counter < sim_time : # O(t)
     pcm.set_array(u)
     axis.set_title("Distribution at t: {:.3f} [s].".format(counter))
 
-    print("here ")
-    print(cells[0].points)
-    print("end here ")
-    cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
 
+    try:
+        cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
+    except:
+        print("Error in plotting")
+        for cell in cells:
+            print(cell.points)
+        exit(1)
  
     plt.pause(0.01)
     counter += dt
