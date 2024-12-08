@@ -181,7 +181,7 @@ class Cell_2():
             self.pos_y = np.clip(self.pos_y + move_y, 0, u.shape[1] - 1)
 
         else:
-            mov_vector = np.array([move_x, move_y])
+            mov_vector = np.array([move_y, move_x])
             self.pos_x = np.clip(self.pos_x + move_x, 0, u.shape[0] - 1)
             self.pos_y = np.clip(self.pos_y + move_y, 0, u.shape[1] - 1)
             self.points = np.clip(self.points + mov_vector, 0, u.shape[0] - 1)
