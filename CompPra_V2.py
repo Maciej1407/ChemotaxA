@@ -27,7 +27,7 @@ def circle_points(center, radius):
         list: A list of [x, y] points inside the circle.
     """
     cx, cy = center
-    radius_squared = radius ** 2
+  #  radius_squared = radius ** 2
     points = []
 
     # Use the midpoint circle algorithm to find points
@@ -161,32 +161,7 @@ class Cell_2():
             self.pos_y += correction_vector[0]
 
         # Append the position to history
-        self.pos_history.append([time_curr + dt, self.pos_x, self.pos_y])
-        """   mov_vector = np.array([move_y, move_x])
-            
-            self.points = self.points + mov_vector
-
-            self.pos_x += move_x
-            self.pos_y += move_y
-
-            
-            lim_size = np.array(grid_shape)
-
-            x_min, x_max = 0, lim_size[0]
-            y_min, y_max = 0, lim_size[1]
-
-            temp = self.points
-
-            outside_points = temp[(temp[:, 0] < x_min) | (temp[:, 0] >= x_max) | (temp[:, 1] < y_min) | (temp[:, 1] >= y_max)]
-
-            if outside_points.size > 0:
-                correction_vector = np.sum(-outside_points, axis = 0)
-                self.points += correction_vector
-                self.pos_x += correction_vector[1]
-                self.pos_y += correction_vector[0]
-                 """
-
-
+       
         self.pos_history.append([time_curr+dt, self.pos_x, self.pos_y])
 
     def get_position_history(self,type="list"):
@@ -200,9 +175,9 @@ class Cell_2():
         
 
     
-alpha = 400
+alpha = 5
 length = 400
-sim_time = 5
+sim_time = 100
 nodes = 250
 num_cells= 8
 
@@ -246,7 +221,7 @@ plt.colorbar(pcm, ax=axis)
 
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
-cells = [Cell_2( int(nodes/ 2), int( nodes / 2) ) for _ in range(num_cells)]
+cells = [Cell_2( int(nodes/ 2), int( nodes / 2), shape = ["circle", 3] ) for _ in range(num_cells)]
 
 counter = 0 
 
