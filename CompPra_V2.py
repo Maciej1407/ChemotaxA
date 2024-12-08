@@ -171,17 +171,20 @@ class Cell_2():
         rand_y = random.randint(-step, step)
 
         # Scale gradient to influence movement
-        move_x = rand_x + grad_x * sensitivity
-        move_y = rand_y + grad_y * sensitivity
+        move_x = int(rand_x + grad_x * sensitivity)
+        move_y = int(rand_y + grad_y * sensitivity)
 
         # Update cell position with stochastic movement, ensuring it stays within bounds
 
         if self.default:
-            self.pos_x = np.clip(self.pos_x + int(move_x), 0, u.shape[0] - 1)
-            self.pos_y = np.clip(self.pos_y + int(move_y), 0, u.shape[1] - 1)
+            self.pos_x = np.clip(self.pos_x + move_x, 0, u.shape[0] - 1)
+            self.pos_y = np.clip(self.pos_y + move_y, 0, u.shape[1] - 1)
 
         else:
-            self.points = np.clip(self.points + [move_x, move_y], 0, u.shape[0] - 1)
+            mov_vector = np.array([move_x, move_y])
+            self.pos_x = np.clip(self.pos_x + move_x, 0, u.shape[0] - 1)
+            self.pos_y = np.clip(self.pos_y + move_y, 0, u.shape[1] - 1)
+            self.points = np.clip(self.points + mov_vector, 0, u.shape[0] - 1)
  
 
         self.pos_history.append([time_curr+dt, self.pos_x, self.pos_y])
@@ -288,7 +291,10 @@ while counter < sim_time : # O(t)
     pcm.set_array(u)
     axis.set_title("Distribution at t: {:.3f} [s].".format(counter))
 
-    cellMarker = [axis.plot(cell.pos_y, cell.pos_x, 'wo', markersize=8)[0] for cell in cells]  
+    print("here ")
+    print(cells[0].points)
+    print("end here ")
+    cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
 
  
     plt.pause(0.01)
