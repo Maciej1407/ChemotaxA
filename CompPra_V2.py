@@ -287,4 +287,4 @@ print(f'Total Execution Time: {FINAL}')
 #plt.show()
 
 
-print(cells[0].get_position_history())
+#print(cells[0].get_position_history())
