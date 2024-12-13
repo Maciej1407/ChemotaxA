@@ -70,12 +70,34 @@ def _compute_gradient(pos_x, pos_y, u, dx, dy, step = 1):
     
     return grad_x, grad_y
 
+def degrade_pos_gen(center_x, center_y, side_length, grid_shape):
+
+    grid_h, grid_w = grid_shape
+
+    str_x = max(0, center_x - side_length // 2)
+    end_x = min(grid_w, center_x + side_length // 2 + 1)
+
+    str_y = max(0, center_y - side_length // 2) 
+    end_y = min(grid_h, center_y + side_length // 2 + 1)   
+
+    x = np.arange(str_x, end_x)
+    y = np.arange(str_y, end_y)
+
+    x_mesh, y_mesh = np.meshgrid(x, y)
+
+        # Stack x and y coordinates into a single array
+    positions = np.vstack((x_mesh.ravel(), y_mesh.ravel())).T
+    
+    return positions
+
+
 class Cell_2():
     '''
     ----------------
     This class represents a cell that can move within a grid. 
     The cell's position is updated based on random movement and gradients computed from a given field. 
     The cell's position history is recorded and can be retrieved in either list, dataframe or dictionary format.
+    To-Add, Chemotaxing param recording if the cell is influenced by a chemical gradient.
     
     Attributes:
     pos_x (int): x-coordinate of the cell 
@@ -90,10 +112,13 @@ class Cell_2():
     -----------
 
     ''' 
-    def __init__(self, pos_x, pos_y, shape  = [ "circle", 1] ):
+    def __init__(self, grid, pos_x, pos_y, shape  = [ "circle", 1], degradation_area = 1):
 
+        
         self.default = True
-
+        self.degRadius = degradation_area
+        self.degArea = degrade_pos_gen(pos_x, pos_y, degradation_area, grid.shape)
+        
         if shape[0] == "circle":
 
             self.default = False
@@ -138,6 +163,8 @@ class Cell_2():
         self.pos_x += move_x
         self.pos_y += move_y
 
+        self.degArea += mov_vector
+
         # Boundary values
         x_min, x_max = 0, grid_shape[0] - 1
         y_min, y_max = 0, grid_shape[1] - 1
@@ -160,9 +187,10 @@ class Cell_2():
             self.pos_x += correction_vector[1]
             self.pos_y += correction_vector[0]
 
+            self.degArea += correction_vector
+
         # Append the position to history
-       
-        self.pos_history.append([time_curr+dt, self.pos_x, self.pos_y])
+        self.pos_history.append([time_curr + dt, self.pos_x, self.pos_y])
 
     def get_position_history(self,type="list"):
         if type=="list":
@@ -172,7 +200,6 @@ class Cell_2():
             return df
         elif type == "dict":
             return { "time_step": [x[0] for x in self.pos_history], "pos_x": [x[1] for x in self.pos_history], "pos_y": [x[2] for x in self.pos_history]}
-        
 
     
 alpha = 5
@@ -221,10 +248,8 @@ plt.colorbar(pcm, ax=axis)
 
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
-cells = [Cell_2( int(nodes/ 2), int( nodes / 2), shape = ["circle", 3] ) for _ in range(num_cells)]
-
+cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
 counter = 0 
-
 cellMarker = []
 
 @jit(nopython=True)
@@ -241,8 +266,24 @@ def calc_grad_np(u):
 
 @delayed
 def update_cell(c, u, dx, dy, counter, dt, grid_size):
-    c.update_pos_grad(u, dx, dy, 0.6, counter, dt, grid_size)
-    u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 2
+    
+    c.update_pos_grad(u, dx, dy, 0.5, counter, dt, grid_size)
+
+    if c.degRadius > 1:
+
+        x_min, x_max = 0, u.shape[1] - 1
+        y_min, y_max = 0, u.shape[0] - 1
+
+        clipped_degArea = np.copy(c.degArea)
+        clipped_degArea[:, 0] = np.clip(clipped_degArea[:, 0], y_min, y_max)  # Y-axis
+        clipped_degArea[:, 1] = np.clip(clipped_degArea[:, 1], x_min, x_max)  # X-axis
+
+        u[clipped_degArea[:,1], clipped_degArea[:,0]] = u[clipped_degArea[:,1], clipped_degArea[:,0]] / 10
+
+
+        #u[c.degArea[:,1], c.degArea[:,0]] = u[c.degArea[:,1], c.degArea[:,0]] / 10
+    else:
+        u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 10
     return c
 
 start = time.time()
