@@ -13,6 +13,10 @@ from collections import deque
 import pandas as pd
 #from numba.experimental import jitclass
 
+def getEffectiveStimulus(cell, S, K_d):
+
+    v = (cell.v_max * S) / (K_d + S)
+    return v
 
 def circle_points(center, radius):
     """
@@ -112,18 +116,19 @@ class Cell_2():
     -----------
 
     ''' 
-    def __init__(self, grid, pos_x, pos_y, shape  = [ "circle", 1], degradation_area = 1):
+    def __init__(self, grid, pos_x, pos_y, shape  = [ "circle", 1], degradation_area = 1, nR = 100, k_cat = 0.4):
 
-        
+        self.v_max = nR * k_cat
         self.default = True
         self.degRadius = degradation_area
         self.degArea = degrade_pos_gen(pos_x, pos_y, degradation_area, grid.shape)
         
-        if shape[0] == "circle":
+        if shape[0] == "circle" and shape[1] > 1:
 
             self.default = False
             self.points = circle_points((pos_x, pos_y), shape[1])
-
+        else:
+            self.points = np.array([[pos_x, pos_y]])
         self.shape = shape[0]
         self.pos_x = int(pos_x)
         self.pos_y = int(pos_y)
@@ -146,13 +151,21 @@ class Cell_2():
         return grad_x, grad_y
     
     #@jit(nopython = True)
-    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape ,step=1):
+    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape , step=1):
         
         grad_x, grad_y = self.compute_gradient(u, dx, dy)
 
         # Random movement with gradient influence
         rand_x = random.randint(-step, step)
         rand_y = random.randint(-step, step)
+
+        v_max = self.v_max
+
+        S = u[self.pos_x, self.pos_y]
+        v = getEffectiveStimulus(v_max, S, K_d)
+
+        sensitivity = v / v_max
+
 
         move_x = int(rand_x + grad_x * sensitivity)
         move_y = int(rand_y + grad_y * sensitivity)
@@ -201,7 +214,17 @@ class Cell_2():
         elif type == "dict":
             return { "time_step": [x[0] for x in self.pos_history], "pos_x": [x[1] for x in self.pos_history], "pos_y": [x[2] for x in self.pos_history]}
 
-    
+def getEffectiveStimulus(v_max, S, K_d):
+
+    v = (v_max * S) / (K_d + S)
+    return v
+
+
+k_on = 2e2  # M^-1 s^-1#
+k_off = 10e4 # s^-1
+
+K_d = k_off / k_on # M
+
 alpha = 5
 length = 400
 sim_time = 100
