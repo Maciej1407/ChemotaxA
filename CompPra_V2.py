@@ -248,7 +248,8 @@ plt.colorbar(pcm, ax=axis)
 
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
-cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
+#cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
+cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2)) for _ in range(num_cells)]
 counter = 0 
 cellMarker = []
 
