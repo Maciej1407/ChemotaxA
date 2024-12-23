@@ -13,9 +13,26 @@ from collections import deque
 import pandas as pd
 #from numba.experimental import jitclass
 
-def getEffectiveStimulus(cell, S, K_d):
+def getEffectiveStimulus(v_max, S, K_d):
+    '''
+    Calculates the effective stimulus (or degree to which the cell is affected by a chemoattractant) 
+    according to the relative concentration of the chemoattractant of the cell as well as 
+    it's saturation coefficient and the Michaelis-Menten constant.
 
-    v = (cell.v_max * S) / (K_d + S)
+    Parameters:
+        cell (Cell): The cell object to calculate the effective stimulus for where 
+            cell.v_max is the maximum reaction of the cell which is determined by the number of 
+            receptors the cell is instantiateed with as well as single receptor sensitivity, also
+            defined on cell instantiation,
+        S (float): The concentration of the chemoattractant at the cell's position.
+        K_d (float): The Michaelis-Menten constant defined by k_off / k_on which are 
+            defined as global variables 
+    
+    Returns:
+        v (float): The effective stimulus
+    '''
+    
+    v = (v_max * S) / (K_d + S)
     return v
 
 def circle_points(center, radius):
@@ -54,13 +71,28 @@ def circle_points(center, radius):
 
     # Filter points to ensure they are within the bounds of the grid (optional)
     points = [list(item) for item in set(tuple(point) for point in points)]  # Remove duplicates
-    return np.array(points)
+    return np.array(points) # return outer points of the cell which are drawn
 
 
 
 @jit(nopython=True)
 def _compute_gradient(pos_x, pos_y, u, dx, dy, step = 1):
-    
+    '''
+    Compute the gradient of a field u at a given position (pos_x, pos_y) using central differences.
+    Intended to be used within a wrapped function defined as part of the cell class.
+    This version is defined outside the class to allow for the use of numba's JIT compiler.
+
+    Parameters:
+        pos_x (int): The x-coordinate of the position.
+        pos_y (int): The y-coordinate of the position.
+        u (numpy.ndarray): The field to compute the gradient of.
+        dx (float): The grid spacing in the x-direction.
+        dy (float): The grid spacing in the y-direction.
+        step (int): The step size for the gradient computation.
+
+    Returns:
+        numpy array: A tuple containing the x and y components of the gradient.
+    '''
     x, y = pos_x, pos_y 
 
     # Compute central difference gradient
@@ -74,7 +106,21 @@ def _compute_gradient(pos_x, pos_y, u, dx, dy, step = 1):
     
     return grad_x, grad_y
 
-def degrade_pos_gen(center_x, center_y, side_length, grid_shape):
+def degrade_pos_gen(center_x, center_y, side_length, grid_shape): 
+    '''
+    Function intended to run a single time. Calculates the area of degradation for a given cell perimeter.
+    The area is updated as the cell moves using the same movement vector as the cell.
+    
+    Parameters:
+        center_x (int): The x-coordinate of the center of the cell.
+        center_y (int): The y-coordinate of the center of the cell.
+        side_length (int): The side length of the square area to be degraded.
+        grid_shape (tuple): The shape of the grid as (height, width).
+    
+    Returns:
+        numpy.ndarray: An array of shape (N, 2) where N is the number of positions in the degraded area.
+        Each row contains the (x, y) coordinates of a position within the degraded area.
+    '''
 
     grid_h, grid_w = grid_shape
 
@@ -104,15 +150,32 @@ class Cell_2():
     To-Add, Chemotaxing param recording if the cell is influenced by a chemical gradient.
     
     Attributes:
+    grid (numpy.ndarray): The grid the cell is moving in, used to determine the boundaries of the cell's movement.
+    
     pos_x (int): x-coordinate of the cell 
     pos_y (int): y-coordinate of the cell   
+    
     pos_history (deque): history of the cell's position
+        a default attribute of the cell not used as an instantiation parameter
+    
     shape (list): shape of the cell, options:
-        [circle, radius],
+        [circle, radius], 
         [rectangular / square , width, height],
     
-    polarity:
-    saturation coefficient:
+    degradation_area (int): area of the grid to be degraded by the cell's movement
+    
+    nR (int): number of receptors on the cell
+    
+    k_cat (float): catalytic rate constant of the cell
+        - used to determine the maximum reaction rate of the cell
+    
+    v_max (float): maximum reaction rate of the cell
+        - determined by the number of receptors and the catalytic rate constant
+
+    default (bool): flag to determine if the cell is a default circle or a custom shape
+        - Please note that while the code includes implementations for custom shapes, of various sizes
+        - Most advanced features are only impmplemeted for a single point cell (or a circle with a radius of 1)
+    points (numpy.ndarray): array of points that make up the cell's shape
     -----------
 
     ''' 
@@ -134,6 +197,8 @@ class Cell_2():
         self.pos_y = int(pos_y)
         self.pos_history = deque()
         self.pos_history.append([0,self.pos_x,self.pos_y])
+
+        self.RS_history = deque()
     
     def update_pos(self, grid_size, step = 1):
 
@@ -205,7 +270,8 @@ class Cell_2():
         # Append the position to history
         self.pos_history.append([time_curr + dt, self.pos_x, self.pos_y])
 
-    def get_position_history(self,type="list"):
+    def get_position_history(self, type="list"):
+        
         if type=="list":
             return list(self.pos_history)
         elif type == "df":
@@ -213,11 +279,6 @@ class Cell_2():
             return df
         elif type == "dict":
             return { "time_step": [x[0] for x in self.pos_history], "pos_x": [x[1] for x in self.pos_history], "pos_y": [x[2] for x in self.pos_history]}
-
-def getEffectiveStimulus(v_max, S, K_d):
-
-    v = (v_max * S) / (K_d + S)
-    return v
 
 
 k_on = 2e2  # M^-1 s^-1#
