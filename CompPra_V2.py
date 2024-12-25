@@ -179,7 +179,17 @@ class Cell_2():
     -----------
 
     ''' 
-    def __init__(self, grid, pos_x, pos_y, is_RL_Agent = False ,shape  = [ "circle", 1], degradation_area = 1, nR = 100, k_cat = 0.4, secretion = False):
+
+
+
+
+    def __init__(self, grid, pos_x, pos_y, RL_attributes = None,
+                 is_RL_Agent = False,
+                 shape  = [ "circle", 1],
+                 degradation_area = 1,
+                 nR = 100,
+                 k_cat = 0.4,
+                 secretion = False):
 
         self.v_max = nR * k_cat
         self.default = True
@@ -193,6 +203,7 @@ class Cell_2():
             self.points = circle_points((pos_x, pos_y), shape[1])
         else:
             self.points = np.array([[pos_x, pos_y]])
+
         self.shape = shape[0]
         self.pos_x = int(pos_x)
         self.pos_y = int(pos_y)
@@ -207,6 +218,14 @@ class Cell_2():
     def secrete(self, m):
         global u
         u[self.pos_x, self.pos_y] =  u[self.pos_x, self.pos_y] + m
+
+    def fitness_funciton(self):
+        """
+        Function to be implemented for the RL agent to evalutae the fitness of the cell,
+        it is up to the user to implement depending on the training purpose. An example is provided 
+        here in this branch.
+        """
+        pass
 
     def update_pos(self, grid_size, step = 1):
 
@@ -362,6 +381,10 @@ pcm = axis.pcolormesh(u, cmap = plt.cm.jet, vmin=0, vmax=100)
 
 plt.colorbar(pcm, ax=axis)
 
+learned_attributes = {
+    "degradation": 10 
+}
+
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
 #cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
@@ -409,36 +432,50 @@ def update_cell(c, u, dx, dy, counter, dt, grid_size):
 
 start = time.time()
 
-while counter < sim_time : # O(t)
+RL_Training = True
 
-    w = u.copy()
-    if cellMarker:
-        for mark in cellMarker: # O(n)
-            mark.remove()
+if RL_Training:
+    epochs = 100
+    time_step_per_epoch = 100
+    num_agents = 5
 
-    u = calc_grad_np(u) 
-
-    tasks = [ delayed (update_cell)(c, u, dx, dy, counter, dt, u.shape) for c in cells ]
+    for epoch in range(epochs):
         
-    
-    results = dask.compute(*tasks)
+        cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=True) for _ in range(num_cells)]
+        counter = 0 
+        cellMarker = []
+        counter = 0
 
-    print("t: {:.3f} [s], Concentration {:.2f} %".format(counter, np.average(u)))
+        while counter < time_step_per_epoch : # O(t)
 
-    pcm.set_array(u)
-    axis.set_title("Distribution at t: {:.3f} [s].".format(counter))
+            w = u.copy()
+            if cellMarker:
+                for mark in cellMarker: # O(n)
+                    mark.remove()
+
+            u = calc_grad_np(u) 
+
+            tasks = [ delayed (update_cell)(c, u, dx, dy, counter, dt, u.shape) for c in cells ]
+                
+            
+            results = dask.compute(*tasks)
+
+            print("t: {:.3f} [s], Concentration {:.2f} %".format(counter, np.average(u)))
+
+            pcm.set_array(u)
+            axis.set_title("Distribution at t: {:.3f} [s].".format(counter))
 
 
-    try:
-        cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
-    except:
-        print("Error in plotting")
-        for cell in cells:
-            print(cell.points)
-        exit(1)
- 
-    plt.pause(0.01)
-    counter += dt
+            try:
+                cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
+            except:
+                print("Error in plotting")
+                for cell in cells:
+                    print(cell.points)
+                exit(1)
+        
+            plt.pause(0.01)
+            counter += dt
     
 end = time.time()
 
