@@ -179,13 +179,14 @@ class Cell_2():
     -----------
 
     ''' 
-    def __init__(self, grid, pos_x, pos_y, shape  = [ "circle", 1], degradation_area = 1, nR = 100, k_cat = 0.4):
+    def __init__(self, grid, pos_x, pos_y, shape  = [ "circle", 1], degradation_area = 1, nR = 100, k_cat = 0.4, secretion = False):
 
         self.v_max = nR * k_cat
         self.default = True
         self.degRadius = degradation_area
         self.degArea = degrade_pos_gen(pos_x, pos_y, degradation_area, grid.shape)
-        
+        self.secrete = secretion
+
         if shape[0] == "circle" and shape[1] > 1:
 
             self.default = False
@@ -208,6 +209,19 @@ class Cell_2():
         else:
             self.points = np.clip(self.points + [np.random.randint(-step, step), np.random.randint(-step, step)], 0, grid_size - 1)
 
+    def attractant_secretion_rule(self, rule = "random"):
+        '''
+        This function is intended to be used to determine the cell's secretion of an attractant based on the cell's position
+        and the state of the cell. This function is intended to be called within the update_pos_grad function.
+        The function is currently implemented as a random chance of secretion. But it is intended to be expanded
+        as a Learned Rule in a Reinfocement Learning Model.
+        '''
+        if (random.randint(0,1) < 0.01):
+            return True
+        else:
+            return False
+        
+
 
    # @jit(nopython = True)
     def compute_gradient(self, u, dx, dy, step = 1):
@@ -229,8 +243,10 @@ class Cell_2():
         S = u[self.pos_x, self.pos_y]
         v = getEffectiveStimulus(v_max, S, K_d)
 
-        sensitivity = v / v_max
+        sensitivity = v / v_max       # Sensitivity is defibed as tge ratio of the effective stimulus to the maximum stimulus
 
+
+        self.RS_history.append([time_curr + dt, v, (grad_x+grad_y)/2])
 
         move_x = int(rand_x + grad_x * sensitivity)
         move_y = int(rand_y + grad_y * sensitivity)
@@ -279,6 +295,16 @@ class Cell_2():
             return df
         elif type == "dict":
             return { "time_step": [x[0] for x in self.pos_history], "pos_x": [x[1] for x in self.pos_history], "pos_y": [x[2] for x in self.pos_history]}
+        
+    def get_stimulation_stats(self, type="list"):
+        
+        if type=="list":
+            return list(self.RS_history)
+        elif type == "df":
+            df = pd.DataFrame ( list(self.RS_history), columns = ["time_step", "effective_stimulus", "gradient_magnitude"]) 
+            return df
+        elif type == "dict":
+            return { "time_step": [x[0] for x in self.RS_history], "effective_stimulus": [x[1] for x in self.RS_history], "gradient_magnitude": [x[2] for x in self.RS_history]}
 
 
 k_on = 2e2  # M^-1 s^-1#
@@ -286,9 +312,9 @@ k_off = 10e4 # s^-1
 
 K_d = k_off / k_on # M
 
-alpha = 5
+alpha = 50
 length = 400
-sim_time = 100
+sim_time = 1000
 nodes = 250
 num_cells= 8
 
@@ -333,7 +359,7 @@ plt.colorbar(pcm, ax=axis)
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
 #cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
-cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2)) for _ in range(num_cells)]
+cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=True) for _ in range(num_cells)]
 counter = 0 
 cellMarker = []
 
@@ -369,6 +395,10 @@ def update_cell(c, u, dx, dy, counter, dt, grid_size):
         #u[c.degArea[:,1], c.degArea[:,0]] = u[c.degArea[:,1], c.degArea[:,0]] / 10
     else:
         u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 10
+        if c.secrete:
+            if c.attractant_secretion_rule():
+                u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] + 40
+        
     return c
 
 start = time.time()
