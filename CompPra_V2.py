@@ -181,21 +181,28 @@ class Cell_2():
     ''' 
 
 
-
-
     def __init__(self, grid, pos_x, pos_y, RL_attributes = None,
                  is_RL_Agent = False,
                  shape  = [ "circle", 1],
                  degradation_area = 1,
+                 degradation_rate = 40,
                  nR = 100,
                  k_cat = 0.4,
-                 secretion = False):
+                 secretion = False,
+                 p_secrete = 0.01):
 
         self.v_max = nR * k_cat
         self.default = True
         self.degRadius = degradation_area
         self.degArea = degrade_pos_gen(pos_x, pos_y, degradation_area, grid.shape)
         self.secretion = secretion
+        self.degradation_rate = degradation_rate
+        self.p_secrete = p_secrete
+
+        # Temporary proof of concept for degradation rate fitness functions
+        if RL_attributes is not None:      
+            self.degradation = RL_attributes["degradation"]
+
 
         if shape[0] == "circle" and shape[1] > 1:
 
@@ -220,6 +227,11 @@ class Cell_2():
         u[self.pos_x, self.pos_y] =  u[self.pos_x, self.pos_y] + m
 
     def fitness_funciton(self):
+
+        objective = [200,50]
+        difference = np.abs(np.array([self.pos_x, self.pos_y]) - objective)
+
+        return difference.mean()
         """
         Function to be implemented for the RL agent to evalutae the fitness of the cell,
         it is up to the user to implement depending on the training purpose. An example is provided 
@@ -242,22 +254,28 @@ class Cell_2():
         The function is currently implemented as a random chance of secretion. But it is intended to be expanded
         as a Learned Rule in a Reinfocement Learning Model.
         '''
-        if (random.randint(0,1) < 0.01):
-            return True
-        else:
-            return False
+        if rule == "random":
+            if (random.randint(0,1) < 0.01):
+                return True
+            else:
+                return False
+        if rule == "RL":
+            if( random.randint(0,1) < self.p_secrete):
+                return True
+            else:
+                return False
 
 
    # @jit(nopython = True)
     def compute_gradient(self, u, dx, dy, step = 1):
         
-        grad_x, grad_y = _compute_gradient(self.pos_x, self.pos_y, u, dx, dy, step)
+        grad_x, grad_y = _compute_gradient(self.pos_x, self.pos_y, u, dx, dy, step=step)
         return grad_x, grad_y
     
     #@jit(nopython = True)
-    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape , step=1):
+    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape , step=5):
         
-        grad_x, grad_y = self.compute_gradient(u, dx, dy)
+        grad_x, grad_y = self.compute_gradient(u, dx, dy, step=step)
 
         # Random movement with gradient influence
         rand_x = random.randint(-step, step)
@@ -268,7 +286,7 @@ class Cell_2():
         S = u[self.pos_x, self.pos_y]
         v = getEffectiveStimulus(v_max, S, K_d)
 
-        sensitivity = v / v_max       # Sensitivity is defibed as tge ratio of the effective stimulus to the maximum stimulus
+        sensitivity = v / v_max       # Sensitivity is defined as tge ratio of the effective stimulus to the maximum stimulus
 
 
         self.RS_history.append([time_curr + dt, v, (grad_x+grad_y)/2])
@@ -337,7 +355,7 @@ k_off = 10e4 # s^-1
 
 K_d = k_off / k_on # M
 
-alpha = 50
+alpha = 5
 length = 400
 sim_time = 1000
 nodes = 250
@@ -350,18 +368,16 @@ dy= length / nodes
 dt = min(dx**2 / (4*alpha), dy**2 / (4/alpha))
 
 t_nodes = int(sim_time/dt)
+max_temp = 100
 
 u = np.zeros((nodes, nodes))
-
-
-array_len = len(u)
-
-max_temp = 100
 
 u[:,-1:-10] = max_temp
 #u[:,int(nodes*0.75):]= max_temp
 u[0:50,:] = max_temp
 #u[ int(len(u)/2): int(len(u)/2)] = 100
+
+array_len = len(u)
 
 center_x, center_y = nodes // 2, nodes // 2
 radius = 15  # Radius of high temperature region
@@ -388,7 +404,7 @@ learned_attributes = {
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
 #cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
-cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=True) for _ in range(num_cells)]
+#cells = [ Cell_2 ( u, int(nodes/ 2), int( nodes / 2), secretion=True, RL_attributes = learned_attributes ) for _ in range(num_cells) ]
 counter = 0 
 cellMarker = []
 
@@ -423,7 +439,7 @@ def update_cell(c, u, dx, dy, counter, dt, grid_size):
 
         #u[c.degArea[:,1], c.degArea[:,0]] = u[c.degArea[:,1], c.degArea[:,0]] / 10
     else:
-        u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 10
+        u[c.pos_x, c.pos_y] =  max(0,u[c.pos_x, c.pos_y] / c.degradation_rate)
         if c.secrete:
             if c.attractant_secretion_rule():
                 c.secrete(10)
@@ -435,16 +451,45 @@ start = time.time()
 RL_Training = True
 
 if RL_Training:
-    epochs = 100
-    time_step_per_epoch = 100
+
+    epochs = 10
+    time_step_per_epoch = 3
     num_agents = 5
 
-    for epoch in range(epochs):
-        
-        cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=True) for _ in range(num_cells)]
+
+    for epoch in range(1, epochs):
+
+        u = np.zeros((nodes, nodes))
+
+        u[:,-1:-10] = max_temp
+
+        u[0:50,:] = max_temp
+
+        if cellMarker:
+                for mark in cellMarker: # O(n)
+                    mark.remove()
+
+        if epoch == 1:
+            init_deg_rates = np.linspace(1, max_temp, num_cells)
+            p_secretion = 0.0001
+            cells = [ Cell_2 ( u, int(nodes/ 2), int( nodes / 2), p_secrete=p_secretion , degradation_rate=init_deg_rates[_], secretion = True, RL_attributes = learned_attributes ) for _ in range(num_cells) ]
+            
+        else:
+            most_fit_cells = sorted(cells, key=lambda cell: cell.fitness_funciton())[:5]  # Top 5 most fit cells
+
+            avg_degradation_rate = max(0, sum(cell.degradation_rate for cell in most_fit_cells) / len(most_fit_cells) )
+            avg_secretion_prob = min(max(0, sum(cell.p_secrete for cell in most_fit_cells) / len(most_fit_cells)),1)
+
+
+            rates = [avg_degradation_rate * np.random.normal(0.5,1) for i in range (num_cells) ]
+            probs = [ max(0, min(1, avg_secretion_prob * np.random.normal(0.5, 1))) for _ in range(num_cells)]
+            cells = [ Cell_2 ( u, int(nodes/ 2), int( nodes / 2), secretion=True, degradation_rate= rates[_], p_secrete=probs[_]) for _ in range(0, num_cells -1) ]
+
         counter = 0 
         cellMarker = []
         counter = 0
+
+        avg_fitness = np.sum([c.fitness_funciton() for c in cells]) / num_cells
 
         while counter < time_step_per_epoch : # O(t)
 
@@ -460,10 +505,8 @@ if RL_Training:
             
             results = dask.compute(*tasks)
 
-            print("t: {:.3f} [s], Concentration {:.2f} %".format(counter, np.average(u)))
-
             pcm.set_array(u)
-            axis.set_title("Distribution at t: {:.3f} [s].".format(counter))
+            axis.set_title(f"Epoch {epoch}. Average fitness: {avg_fitness} ")
 
 
             try:
