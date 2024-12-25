@@ -179,7 +179,7 @@ class Cell_2():
     -----------
 
     ''' 
-    def __init__(self, grid, pos_x, pos_y, shape  = [ "circle", 1], degradation_area = 1, nR = 100, k_cat = 0.4, secretion = False):
+    def __init__(self, grid, pos_x, pos_y, is_RL_Agent = False ,shape  = [ "circle", 1], degradation_area = 1, nR = 100, k_cat = 0.4, secretion = False):
 
         self.v_max = nR * k_cat
         self.default = True
@@ -200,7 +200,10 @@ class Cell_2():
         self.pos_history.append([0,self.pos_x,self.pos_y])
 
         self.RS_history = deque()
-    
+
+        if is_RL_Agent:
+            self.fitness = 0
+
     def secrete(self, m):
         global u
         u[self.pos_x, self.pos_y] =  u[self.pos_x, self.pos_y] + m
@@ -224,7 +227,6 @@ class Cell_2():
             return True
         else:
             return False
-        
 
 
    # @jit(nopython = True)
