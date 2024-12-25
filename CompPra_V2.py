@@ -185,7 +185,7 @@ class Cell_2():
         self.default = True
         self.degRadius = degradation_area
         self.degArea = degrade_pos_gen(pos_x, pos_y, degradation_area, grid.shape)
-        self.secrete = secretion
+        self.secretion = secretion
 
         if shape[0] == "circle" and shape[1] > 1:
 
@@ -201,6 +201,10 @@ class Cell_2():
 
         self.RS_history = deque()
     
+    def secrete(self, m):
+        global u
+        u[self.pos_x, self.pos_y] =  u[self.pos_x, self.pos_y] + m
+
     def update_pos(self, grid_size, step = 1):
 
         if self.default:
@@ -397,7 +401,7 @@ def update_cell(c, u, dx, dy, counter, dt, grid_size):
         u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 10
         if c.secrete:
             if c.attractant_secretion_rule():
-                u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] + 40
+                c.secrete(10)
         
     return c
 
