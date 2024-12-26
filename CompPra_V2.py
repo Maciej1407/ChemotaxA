@@ -224,7 +224,8 @@ class Cell_2():
 
     def secrete(self, m):
         global u
-        u[self.pos_x, self.pos_y] =  u[self.pos_x, self.pos_y] + m
+        global max_temp
+        u[self.pos_x, self.pos_y] =  min(u[self.pos_x, self.pos_y] + m, max_temp)
 
     def fitness_funciton(self):
 
@@ -270,7 +271,7 @@ class Cell_2():
     def compute_gradient(self, u, dx, dy, step = 1):
         
         grad_x, grad_y = _compute_gradient(self.pos_x, self.pos_y, u, dx, dy, step=step)
-        return grad_x, grad_y
+        return max(0,grad_x), max(0,grad_y)
     
     #@jit(nopython = True)
     def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape , step=5):
@@ -286,13 +287,20 @@ class Cell_2():
         S = u[self.pos_x, self.pos_y]
         v = getEffectiveStimulus(v_max, S, K_d)
 
-        sensitivity = v / v_max       # Sensitivity is defined as tge ratio of the effective stimulus to the maximum stimulus
+        sensitivity = max(1e-6, v / v_max)      # Sensitivity is defined as tge ratio of the effective stimulus to the maximum stimulus
 
 
         self.RS_history.append([time_curr + dt, v, (grad_x+grad_y)/2])
 
-        move_x = int(rand_x + grad_x * sensitivity)
-        move_y = int(rand_y + grad_y * sensitivity)
+        try:
+            move_x = int(rand_x + grad_x * sensitivity)
+            move_y = int(rand_y + grad_y * sensitivity)
+        except Exception as e:
+            print(f"Error in movement calculation: {e}")
+            print(f"sensitivity: {sensitivity}")
+            print(f"grad_x: {grad_x}, grad_y: {grad_y}")
+            print(f"rand_x: {rand_x}, rand_y: {rand_y}")
+            exit(1)
 
         # Apply the movement to all points
         mov_vector = np.array([move_y, move_x])
