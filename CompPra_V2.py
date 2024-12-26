@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 import numba
@@ -31,8 +31,12 @@ def getEffectiveStimulus(v_max, S, K_d):
     Returns:
         v (float): The effective stimulus
     '''
-    
-    v = (v_max * S) / (K_d + S)
+    try:
+        v = (v_max * S) / (K_d + S)
+    except Exception as e:
+        print(f"Error in effective stimulus calculation: {e}")
+        print(f"v_max: {v_max}, S: {S}, K_d: {K_d}")
+        exit(1)
     return v
 
 def circle_points(center, radius):
@@ -96,11 +100,13 @@ def _compute_gradient(pos_x, pos_y, u, dx, dy, step = 1):
     x, y = pos_x, pos_y 
 
     # Compute central difference gradient
-    if 1 <= x < u.shape[0] - 1 and 1 <= y < u.shape[1] - 1: # boundary rejection
+    if step <= x < u.shape[0] - step and step <= y < u.shape[1] - step: # boundary rejection
 
         grad_x = (u[x+step, y] - u[x-step, y]) / (2 * dx) # x grad
         grad_y = (u[x, y+step] - u[x, y-step]) / (2 * dy) # y grad
-    
+
+        if math.isinf(grad_x) or math.isnan(grad_x) or math.isinf(grad_y) or math.isnan(grad_y):
+            grad_x, grad_y = 0,0
     else:
         grad_x, grad_y = 0, 0 
     
@@ -225,9 +231,11 @@ class Cell_2():
     def secrete(self, m):
         global u
         global max_temp
-        u[self.pos_x, self.pos_y] =  min(u[self.pos_x, self.pos_y] + m, max_temp)
+        u[self.pos_x, self.pos_y] =  max(0,min(max_temp, u[self.pos_x, self.pos_y] + m) )
 
     def fitness_funciton(self):
+        
+        print(f"alleged final pos:{self.pos_x, self.pos_y} ")
 
         objective = [200,50]
         difference = np.abs(np.array([self.pos_x, self.pos_y]) - objective)
@@ -268,13 +276,13 @@ class Cell_2():
 
 
    # @jit(nopython = True)
-    def compute_gradient(self, u, dx, dy, step = 1):
+    def compute_gradient(self, u, dx, dy, step = 2):
         
         grad_x, grad_y = _compute_gradient(self.pos_x, self.pos_y, u, dx, dy, step=step)
         return max(0,grad_x), max(0,grad_y)
     
     #@jit(nopython = True)
-    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape , step=5):
+    def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape , step=2):
         
         grad_x, grad_y = self.compute_gradient(u, dx, dy, step=step)
 
@@ -283,7 +291,7 @@ class Cell_2():
         rand_y = random.randint(-step, step)
 
         v_max = self.v_max
-
+        global K_d
         S = u[self.pos_x, self.pos_y]
         v = getEffectiveStimulus(v_max, S, K_d)
 
@@ -363,9 +371,9 @@ k_off = 10e4 # s^-1
 
 K_d = k_off / k_on # M
 
-alpha = 5
-length = 400
-sim_time = 1000
+alpha = 2000
+length = 1000
+sim_time = 15
 nodes = 250
 num_cells= 8
 
@@ -447,7 +455,13 @@ def update_cell(c, u, dx, dy, counter, dt, grid_size):
 
         #u[c.degArea[:,1], c.degArea[:,0]] = u[c.degArea[:,1], c.degArea[:,0]] / 10
     else:
-        u[c.pos_x, c.pos_y] =  max(0,u[c.pos_x, c.pos_y] / c.degradation_rate)
+        try:
+            u[c.pos_x, c.pos_y] =  max(0,u[c.pos_x, c.pos_y] / c.degradation_rate)
+        except Exception as e:
+            print(f"Error in degradation: {e}")
+            print(f"Cell position: {c.pos_x, c.pos_y}")
+            print(f"Degradation Rate: {c.degradation_rate}")
+            exit(1)
         if c.secrete:
             if c.attractant_secretion_rule():
                 c.secrete(10)
@@ -460,7 +474,7 @@ RL_Training = True
 
 if RL_Training:
 
-    epochs = 10
+    epochs = 4
     time_step_per_epoch = 3
     num_agents = 5
 
@@ -471,33 +485,38 @@ if RL_Training:
 
         u[:,-1:-10] = max_temp
 
-        u[0:50,:] = max_temp
+        u[0:150,:] = max_temp
 
         if cellMarker:
                 for mark in cellMarker: # O(n)
                     mark.remove()
 
         if epoch == 1:
+            avg_fitness = 75
             init_deg_rates = np.linspace(1, max_temp, num_cells)
             p_secretion = 0.0001
-            cells = [ Cell_2 ( u, int(nodes/ 2), int( nodes / 2), p_secrete=p_secretion , degradation_rate=init_deg_rates[_], secretion = True, RL_attributes = learned_attributes ) for _ in range(num_cells) ]
+            print("Epoch 1")
+            cells = [ Cell_2 ( u, int(nodes/ 2), int( nodes / 2), p_secrete=p_secretion , degradation_rate=init_deg_rates[_], secretion = False, RL_attributes = learned_attributes ) for _ in range(num_cells) ]
             
         else:
-            most_fit_cells = sorted(cells, key=lambda cell: cell.fitness_funciton())[:5]  # Top 5 most fit cells
+            avg_fitness = np.sum([c.fitness_funciton() for c in cells]) / num_cells
+            print(f"\n Epoch {epoch}")
+            most_fit_cells = sorted(cells, key=lambda cell: cell.fitness_funciton())[:3]  # Most fit cell
+            
+            avg_degradation_rate = max(0, sum( [c.degradation_rate for c in most_fit_cells] ) / len(most_fit_cells) )
+            avg_secretion_prob = min(max(0, sum([c.p_secrete for c in most_fit_cells ]) / len(most_fit_cells)),1)
 
-            avg_degradation_rate = max(0, sum(cell.degradation_rate for cell in most_fit_cells) / len(most_fit_cells) )
-            avg_secretion_prob = min(max(0, sum(cell.p_secrete for cell in most_fit_cells) / len(most_fit_cells)),1)
 
-
-            rates = [avg_degradation_rate * np.random.normal(0.5,1) for i in range (num_cells) ]
+            rates = [max(0.1, avg_degradation_rate + np.random.normal(0.5,1) ) for _ in range (num_cells) ]
             probs = [ max(0, min(1, avg_secretion_prob * np.random.normal(0.5, 1))) for _ in range(num_cells)]
+
             cells = [ Cell_2 ( u, int(nodes/ 2), int( nodes / 2), secretion=True, degradation_rate= rates[_], p_secrete=probs[_]) for _ in range(0, num_cells -1) ]
 
         counter = 0 
         cellMarker = []
         counter = 0
 
-        avg_fitness = np.sum([c.fitness_funciton() for c in cells]) / num_cells
+        #avg_fitness = np.sum([c.fitness_funciton() for c in cells]) / num_cells
 
         while counter < time_step_per_epoch : # O(t)
 
@@ -534,7 +553,3 @@ FINAL = end - start
 
 print(f'Total Execution Time: {FINAL}')
 
-#plt.show()
-
-
-#print(cells[0].get_position_history())
