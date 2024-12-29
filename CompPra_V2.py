@@ -216,7 +216,7 @@ class Cell_2():
         The function is currently implemented as a random chance of secretion. But it is intended to be expanded
         as a Learned Rule in a Reinfocement Learning Model.
         '''
-        if (random.randint(0,1) < 0.01):
+        if (random.uniform(0,1) < 0.001):
             return True
         else:
             return False
@@ -335,7 +335,7 @@ max_temp = 100
 
 u[:,-1:-10] = max_temp
 #u[:,int(nodes*0.75):]= max_temp
-u[0:50,:] = max_temp
+u[0:75,:] = max_temp
 #u[ int(len(u)/2): int(len(u)/2)] = 100
 
 center_x, center_y = nodes // 2, nodes // 2
@@ -359,7 +359,7 @@ plt.colorbar(pcm, ax=axis)
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
 #cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
-cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=True) for _ in range(num_cells)]
+cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=True, degradation_area=2) for _ in range(num_cells)]
 counter = 0 
 cellMarker = []
 
