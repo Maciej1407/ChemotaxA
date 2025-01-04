@@ -315,9 +315,9 @@ K_d = k_off / k_on # M
 
 alpha = 50
 length = 400
-sim_time = 100
+sim_time = 1000
 nodes = 250
-num_cells= 4
+num_cells= 8
 
 dx = length / nodes
 dy= length / nodes
@@ -380,7 +380,7 @@ def calc_grad_np(u):
 def update_cell(c, u, dx, dy, counter, dt, grid_size):
     
     c.update_pos_grad(u, dx, dy, 0.5, counter, dt, grid_size)
-    
+
     if c.degRadius > 1:
 
         x_min, x_max = 0, u.shape[1] - 1
