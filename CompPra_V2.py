@@ -235,12 +235,16 @@ class Cell_2():
 
     def fitness_funciton(self):
         
-        print(f"alleged final pos:{self.pos_x, self.pos_y} ")
+        df2 = self.get_stimulation_stats("df")
+        df2["gradient_magnitude"] = abs(df2["gradient_magnitude"])
+        return df2["gradient_magnitude"].sum()
 
-        objective = [200,50]
-        difference = np.abs(np.array([self.pos_x, self.pos_y]) - objective)
+     #   print(f"alleged final pos:{self.pos_x, self.pos_y} ")
 
-        return difference.mean()
+     #   objective = [200,50]
+      #  difference = np.abs(np.array([self.pos_x, self.pos_y]) - objective)
+
+       # return difference.mean()
         """
         Function to be implemented for the RL agent to evalutae the fitness of the cell,
         it is up to the user to implement depending on the training purpose. An example is provided 
@@ -279,7 +283,7 @@ class Cell_2():
     def compute_gradient(self, u, dx, dy, step = 2):
         
         grad_x, grad_y = _compute_gradient(self.pos_x, self.pos_y, u, dx, dy, step=step)
-        return max(0,grad_x), max(0,grad_y)
+        return grad_x, grad_y 
     
     #@jit(nopython = True)
     def update_pos_grad(self, u, dx, dy, sensitivity, time_curr, dt, grid_shape , step=2):
@@ -371,23 +375,23 @@ k_off = 10e4 # s^-1
 
 K_d = k_off / k_on # M
 
-alpha = 2000
-length = 1000
+alpha = 200
+length = 800
 sim_time = 15
-nodes = 250
+nodes = 350
 num_cells= 8
 
 dx = length / nodes
 dy= length / nodes
 
 
-dt = min(dx**2 / (4*alpha), dy**2 / (4/alpha))
+dt = min(dx**2 / (4*alpha), dy**2 / (4*alpha))
 
 t_nodes = int(sim_time/dt)
 max_temp = 100
 
 u = np.zeros((nodes, nodes))
-
+# PARAMS
 u[:,-1:-10] = max_temp
 #u[:,int(nodes*0.75):]= max_temp
 u[0:50,:] = max_temp
@@ -474,29 +478,32 @@ RL_Training = True
 
 if RL_Training:
 
-    epochs = 4
-    time_step_per_epoch = 3
-    num_agents = 5
-
+    epochs = 10
+    time_step_per_epoch = 8
+    num_agents = 4
+    avg_fitness = 0
+    fitness = []
+    avg_values = []
 
     for epoch in range(1, epochs):
 
+        fitness.append(avg_fitness)
         u = np.zeros((nodes, nodes))
 
         u[:,-1:-10] = max_temp
 
-        u[0:150,:] = max_temp
+        u[0:225,:] = max_temp
 
         if cellMarker:
                 for mark in cellMarker: # O(n)
                     mark.remove()
 
         if epoch == 1:
-            avg_fitness = 75
+            avg_fitness = 0
             init_deg_rates = np.linspace(1, max_temp, num_cells)
-            p_secretion = 0.0001
+           # p_secretion = np.linspace(0, 1, num_cells)
             print("Epoch 1")
-            cells = [ Cell_2 ( u, int(nodes/ 2), int( nodes / 2), p_secrete=p_secretion , degradation_rate=init_deg_rates[_], secretion = False, RL_attributes = learned_attributes ) for _ in range(num_cells) ]
+            cells = [ Cell_2 ( u, nodes - int(nodes/ 4), nodes - int( nodes / 4) , degradation_rate=init_deg_rates[_], secretion = False, RL_attributes = learned_attributes ) for _ in range(num_cells) ]
             
         else:
             avg_fitness = np.sum([c.fitness_funciton() for c in cells]) / num_cells
@@ -504,13 +511,15 @@ if RL_Training:
             most_fit_cells = sorted(cells, key=lambda cell: cell.fitness_funciton())[:3]  # Most fit cell
             
             avg_degradation_rate = max(0, sum( [c.degradation_rate for c in most_fit_cells] ) / len(most_fit_cells) )
-            avg_secretion_prob = min(max(0, sum([c.p_secrete for c in most_fit_cells ]) / len(most_fit_cells)),1)
+            avg_values.append(avg_degradation_rate)
+          #  avg_secretion_prob = min(max(0, sum([c.p_secrete for c in most_fit_cells ]) / len(most_fit_cells)) 1)
 
 
-            rates = [max(0.1, avg_degradation_rate + np.random.normal(0.5,1) ) for _ in range (num_cells) ]
-            probs = [ max(0, min(1, avg_secretion_prob * np.random.normal(0.5, 1))) for _ in range(num_cells)]
+            rates = [max(0.1, avg_degradation_rate * ( 1+ (_ * 0.1))  ) for _ in range (num_cells) ]
+           # probs = [ min (0, max(0.1, avg_secretion_prob * ( 1+ (_ * 0.1))  )) for _ in range (num_cells) ] 
+            
 
-            cells = [ Cell_2 ( u, int(nodes/ 2), int( nodes / 2), secretion=True, degradation_rate= rates[_], p_secrete=probs[_]) for _ in range(0, num_cells -1) ]
+            cells = [ Cell_2 ( u, nodes - int(nodes/ 4), nodes - int( nodes / 4), secretion=False, degradation_rate= rates[_]) for _ in range(0, num_cells -1) ]
 
         counter = 0 
         cellMarker = []
@@ -524,7 +533,6 @@ if RL_Training:
             if cellMarker:
                 for mark in cellMarker: # O(n)
                     mark.remove()
-
             u = calc_grad_np(u) 
 
             tasks = [ delayed (update_cell)(c, u, dx, dy, counter, dt, u.shape) for c in cells ]
@@ -532,19 +540,19 @@ if RL_Training:
             
             results = dask.compute(*tasks)
 
-            pcm.set_array(u)
-            axis.set_title(f"Epoch {epoch}. Average fitness: {avg_fitness} ")
+ #           pcm.set_array(u)
+  #          axis.set_title(f"Epoch {epoch}. Average fitness: {avg_fitness} ")
 
 
-            try:
-                cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
-            except:
-                print("Error in plotting")
-                for cell in cells:
-                    print(cell.points)
-                exit(1)
+   #         try:
+    #            cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
+     #       except:
+      #          print("Error in plotting")
+       #         for cell in cells:
+        #            print(cell.points)
+         #       exit(1)
         
-            plt.pause(0.01)
+          #  plt.pause(0.00001)
             counter += dt
     
 end = time.time()
@@ -552,4 +560,27 @@ end = time.time()
 FINAL = end - start
 
 print(f'Total Execution Time: {FINAL}')
+print(fitness)
 
+plt.figure()
+
+# Plot fitness over time
+plt.plot(range(1, epochs), fitness, marker='o', label='Average Fitness')
+
+# Add labels and title
+plt.xlabel('Epoch')
+plt.ylabel('Average Fitness')
+plt.title('Fitness Over Time During Reinforcement Learning')
+plt.legend()
+
+# Show the plot
+plt.show()
+
+plt.figure()
+plt.plot([i for i in range (1,len(avg_values)+1)], avg_values, marker = 'o', label = 'Average Degradation Rate')
+plt.xlabel("Epoch")
+plt.ylabel("Average Degradation rate of top 3 cells")
+
+
+# Show the plot
+plt.show()
