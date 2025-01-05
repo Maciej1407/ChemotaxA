@@ -315,9 +315,9 @@ K_d = k_off / k_on # M
 
 alpha = 50
 length = 400
-sim_time = 100
+sim_time = 50
 nodes = 250
-num_cells= 4
+num_cells= 100
 
 dx = length / nodes
 dy= length / nodes
