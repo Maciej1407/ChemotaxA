@@ -317,7 +317,7 @@ alpha = 50
 length = 400
 sim_time = 50
 nodes = 250
-num_cells= 100
+num_cells= 3
 
 dx = length / nodes
 dy= length / nodes
@@ -360,7 +360,12 @@ plt.colorbar(pcm, ax=axis)
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
 #cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
-cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=True, degradation_area=2) for _ in range(num_cells)]
+cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=False, degradation_area=2) for _ in range(1)]
+
+cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",3], degradation_area=4))
+cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",2], degradation_area=2))
+cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",5], degradation_area=5))
+
 counter = 0 
 cellMarker = []
 
