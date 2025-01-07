@@ -1,4 +1,4 @@
-# PyChemoTax: Reinforcement Learning-Driven Chemotaxis Simulation
+# PyChemoTax: Chemotaxis Simulation (Beta Stage)
 
 PyChemoTax is a Python-based framework designed to simulate chemotaxis-driven cellular dynamics in customizable environments. Leveraging both computational efficiency and biological realism, this project includes reinforcement learning capabilities for optimizing agent behavior, enabling the exploration of emergent phenomena in cell populations.
 
