@@ -52,7 +52,7 @@ git checkout <branch-name>
 To run the main simulation:
 
 ```bash
-python CompPra_V2.py
+python simulation.py
 ```
 
 This will execute a reinforcement learning simulation where agents adapt their behavior over multiple epochs.
@@ -69,21 +69,19 @@ Key parameters are defined in the script and can be modified to suit specific ne
 
 The simulation provides real-time visualization of the chemoattractant field and agent dynamics. At the end of the simulation, you can also plot:
 
-- Fitness over time: Displays how the average fitness of agents evolves during training.
+- Fitness over time: Displays how the average fitness of agents evolves during training
+- Cell Paths over time: Displays a static graph displaying cell movements
+- Simulation Statistics: Look at cell properties over time of the simulation e.g. Gradient Field Concentration V.S. Effective Stimulus
 
 ```python
 # Example of fitness plotting
-plt.plot(range(1, epochs), fitness_over_time, marker='o', label='Average Fitness')
-plt.xlabel('Epoch')
-plt.ylabel('Average Fitness')
-plt.title('Fitness Over Time During Reinforcement Learning')
-plt.legend()
-plt.show()
+plot_cell_history(cell.get_pos_history("df") )
+
+#Example plotting Effective Stimulus compared to Gradient Concentration over time
+plot_statistics(df, columns = ["time_step", "effective_stimulus", "gradient_magnitude"], polynomial_fit=True, degree=3)
 ```
 
 ## Known Issues
-
-- Agents may exhibit unexpected movement patterns due to gradient calculation biases. See `compute_gradient` for potential fixes.
 - The `refactor_RL` branch contains experimental features and may produce unstable results.
 
 ## Contributing
@@ -108,12 +106,12 @@ This project is licensed
 
 ## Contact
 
-For questions or suggestions, please create an issue or reach out at [dmcbmkm@ucl.ac.uk).
+For questions or suggestions, please create an issue or reach out at (dmcbmkm@ucl.ac.uk).
 
 
 # PyChemoTax: Function Descriptions
 
-This document provides a detailed description of the key functions used in the PyChemoTax framework. Each function plays a vital role in enabling the simulation of chemotaxis-driven cellular dynamics and reinforcement learning.
+This document provides a description of the key functions used in the PyChemoTax framework. Each function plays a vital role in enabling the simulation of chemotaxis-driven cellular dynamics and reinforcement learning.
 
 ## Core Functions
 
@@ -138,12 +136,12 @@ This document provides a detailed description of the key functions used in the P
 - `radius` (int): Circle radius.
 
 **Returns**:
-- List of points within the circle.
+- Numpy matrix of points within circle
 
 ---
 
 ### 3. `_compute_gradient(pos_x, pos_y, u, dx, dy, step=1)`
-**Purpose**: Calculates the gradient of a chemoattractant field at a given position using central differences.
+**Purpose**: Calculates the local cell gradient of a chemoattractant field at a given position using central differences.
 
 **Parameters**:
 - `pos_x` (int): x-coordinate.
@@ -176,10 +174,12 @@ A class representing a chemotactic cell in the simulation.
 
 **Key Attributes**:
 - `grid` (ndarray): Simulation grid.
-- `pos_x`, `pos_y` (int): Cell's current position.
+- `pos_x`, `pos_y` (int): Cell's starting position.
 - `shape` (list): Defines the cell's shape (circle or custom).
 - `degradation_area` (int): Size of the degradation area.
 - `secretion` (bool): Whether the cell secretes attractant.
+- `nR` (int): Defines the number of receptors the cell contains
+- `k_cat` (float): Defines the catalytic constant per receptor
 
 ---
 
@@ -197,11 +197,7 @@ Calculates the fitness score of a cell based on gradient magnitude.
 #### `get_position_history(type="list")`
 Retrieves the history of the cell's positions in a specified format (list, dataframe, or dictionary).
 
----
-
-## Helper Functions
-
-### 1. `calc_grad_np(u)`
+#### `calc_grad_np(u)`
 **Purpose**: Computes the diffusion of chemoattractant across the grid.
 
 **Parameters**:
@@ -210,10 +206,8 @@ Retrieves the history of the cell's positions in a specified format (list, dataf
 **Returns**:
 - Updated field matrix after diffusion.
 
----
-
-### 2. `update_cell(c, u, dx, dy, counter, dt, grid_size)`
-**Purpose**: Updates the state of a single cell, including its position and degradation behavior.
+### `update_cell(c, u, dx, dy, counter, dt, grid_size)`
+**Purpose**: Updates the state of a single cell, including its position and degradation behavior. This function is decorated with the Dask's 'Delayed' decorator. The process runs in parallel with other instantiated agents
 
 **Parameters**:
 - `c` (Cell_2): Cell object.
@@ -226,8 +220,71 @@ Retrieves the history of the cell's positions in a specified format (list, dataf
 - Updated cell object.
 
 ---
+## Helper Functions
 
-## Reinforcement Learning Functions
+#### `merge_cell_pos_df`
+**Purpose** Merges dataframes of cell's movement data into a single dataframe
+
+**Parameters**:
+- `cells` (Array [Cell]): Array containing the Cell's whose positional dataframes are to be merged
+- `on= "time_step"` (String): Which column to merge dataframes on, default = "time_step"
+
+#### `compute_distances_cells`
+**Purpose**: Computes pairwise distances and differences in \(x\)- and \(y\)-coordinates between all cells in a dataframe.
+
+**Parameters**:
+- `merged_df` (pd.DataFrame): A dataframe containing the positions of all cells, with columns for \(x\)- and \(y\)-coordinates.
+
+**Returns**:
+- `pd.DataFrame`: An updated dataframe with additional columns for pairwise distances and differences in \(x\)- and \(y\)-coordinates for all cell pairs.
+
+#### `plot_statistics`
+**Purpose**: Plots statistics from the simulation, such as effective stimulus and gradient magnitude, with optional polynomial trendlines.
+
+**Parameters**:
+- `df` (pd.DataFrame): Dataframe containing the data to plot.
+- `columns` (list): A list of column names, where:
+  - The first element is the \(x\)-axis column.
+  - The second element is the primary \(y\)-axis column.
+  - The third element is the secondary \(y\)-axis column.
+- `polynomial_fit` (bool): Whether to fit and plot polynomial trendlines. Default is `True`.
+- `degree` (int): Degree of the polynomial for trendlines. Default is `3`.
+
+**Returns**:
+- None (Generates an interactive plot using Plotly).
+
+
+## `plot_cell_history`
+**Purpose**: Plots the trajectory of a single cell's movement over time with a gradient line colored by time steps. The function is specifically designed for plotting trajectory of a single cell
+
+**Parameters**:
+- `cell_history` (numpy.ndarray): A 2D array where each row represents a time step and contains the following columns:
+  - `[time_step, y_position, x_position]`.
+
+**Returns**:
+- None (Generates a plot displaying the cell's movement trajectory, with the line color representing time steps. The start and end points are annotated with green and red markers, respectively.)
+
+#### `plot_history_2`
+**Purpose**: Plots the trajectory of cell movement with a gradient line colored by time steps. It is an update version of `plot_cell_history` which is capable of generating cell path visualisations for multiple cells
+
+**Parameters**:
+- `position_history` (numpy.ndarray): A 2D array where each row represents a time step and contains `[time, y_position, x_position]`.
+- `ax` (matplotlib.axes.Axes, optional): An existing matplotlib Axes object to plot on. If None, a new figure and axes are created.
+- `color` (str or None, optional): Color for the base path with markers. If None, the default color is used.
+- `cmap` (str, optional): Colormap to use for the gradient line. Default is `'viridis'`.
+- `label` (str, optional): Label for the cell path. Default is `'Cell Path'`.
+
+**Returns**:
+- `fig` (matplotlib.figure.Figure): The matplotlib figure object.
+- `ax` (matplotlib.axes.Axes): The matplotlib axes object.
+- `lc` (matplotlib.collections.LineCollection): The LineCollection object representing the gradient line.
+
+**Notes**:
+- The function creates a gradient line plot where the color of the line represents the time steps.
+- It also annotates the start and end points of the trajectory.
+
+----
+#### Reinforcement Learning Functions
 
 ### 1. `fitness_function()`
 **Purpose**: Evaluates the fitness of an agent (cell) based on its interaction with the gradient field.
