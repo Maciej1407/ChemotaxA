@@ -229,10 +229,62 @@ Retrieves the history of the cell's positions in a specified format (list, dataf
 - `cells` (Array [Cell]): Array containing the Cell's whose positional dataframes are to be merged
 - `on= "time_step"` (String): Which column to merge dataframes on, default = "time_step"
 
+#### `compute_distances_cells`
+**Purpose**: Computes pairwise distances and differences in \(x\)- and \(y\)-coordinates between all cells in a dataframe.
+
+**Parameters**:
+- `merged_df` (pd.DataFrame): A dataframe containing the positions of all cells, with columns for \(x\)- and \(y\)-coordinates.
+
+**Returns**:
+- `pd.DataFrame`: An updated dataframe with additional columns for pairwise distances and differences in \(x\)- and \(y\)-coordinates for all cell pairs.
+
+#### `plot_statistics`
+**Purpose**: Plots statistics from the simulation, such as effective stimulus and gradient magnitude, with optional polynomial trendlines.
+
+**Parameters**:
+- `df` (pd.DataFrame): Dataframe containing the data to plot.
+- `columns` (list): A list of column names, where:
+  - The first element is the \(x\)-axis column.
+  - The second element is the primary \(y\)-axis column.
+  - The third element is the secondary \(y\)-axis column.
+- `polynomial_fit` (bool): Whether to fit and plot polynomial trendlines. Default is `True`.
+- `degree` (int): Degree of the polynomial for trendlines. Default is `3`.
+
+**Returns**:
+- None (Generates an interactive plot using Plotly).
 
 
----
-## Reinforcement Learning Functions
+## `plot_cell_history`
+**Purpose**: Plots the trajectory of a single cell's movement over time with a gradient line colored by time steps. The function is specifically designed for plotting trajectory of a single cell
+
+**Parameters**:
+- `cell_history` (numpy.ndarray): A 2D array where each row represents a time step and contains the following columns:
+  - `[time_step, y_position, x_position]`.
+
+**Returns**:
+- None (Generates a plot displaying the cell's movement trajectory, with the line color representing time steps. The start and end points are annotated with green and red markers, respectively.)
+
+#### `plot_history_2`
+**Purpose**: Plots the trajectory of cell movement with a gradient line colored by time steps. It is an update version of `plot_cell_history` which is capable of generating cell path visualisations for multiple cells
+
+**Parameters**:
+- `position_history` (numpy.ndarray): A 2D array where each row represents a time step and contains `[time, y_position, x_position]`.
+- `ax` (matplotlib.axes.Axes, optional): An existing matplotlib Axes object to plot on. If None, a new figure and axes are created.
+- `color` (str or None, optional): Color for the base path with markers. If None, the default color is used.
+- `cmap` (str, optional): Colormap to use for the gradient line. Default is `'viridis'`.
+- `label` (str, optional): Label for the cell path. Default is `'Cell Path'`.
+
+**Returns**:
+- `fig` (matplotlib.figure.Figure): The matplotlib figure object.
+- `ax` (matplotlib.axes.Axes): The matplotlib axes object.
+- `lc` (matplotlib.collections.LineCollection): The LineCollection object representing the gradient line.
+
+**Notes**:
+- The function creates a gradient line plot where the color of the line represents the time steps.
+- It also annotates the start and end points of the trajectory.
+
+----
+#### Reinforcement Learning Functions
 
 ### 1. `fitness_function()`
 **Purpose**: Evaluates the fitness of an agent (cell) based on its interaction with the gradient field.
