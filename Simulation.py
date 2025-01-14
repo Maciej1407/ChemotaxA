@@ -540,19 +540,19 @@ if RL_Training:
             
             results = dask.compute(*tasks)
 
- #           pcm.set_array(u)
-  #          axis.set_title(f"Epoch {epoch}. Average fitness: {avg_fitness} ")
+            pcm.set_array(u)
+            axis.set_title(f"Epoch {epoch}. Average fitness: {avg_fitness} ")
 
 
-   #         try:
-    #            cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
-     #       except:
-      #          print("Error in plotting")
-       #         for cell in cells:
-        #            print(cell.points)
-         #       exit(1)
+            try:
+                cellMarker = [axis.plot(cell.points[:,0] , cell.points[:,1], 'wo', markersize=1)[0] for cell in cells]  
+            except:
+                print("Error in plotting")
+                for cell in cells:
+                    print(cell.points)
+                exit(1)
         
-          #  plt.pause(0.00001)
+            plt.pause(0.00001)
             counter += dt
     
 end = time.time()
