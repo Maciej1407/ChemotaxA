@@ -234,23 +234,16 @@ class Cell_2():
         u[self.pos_x, self.pos_y] =  max(0,min(max_temp, u[self.pos_x, self.pos_y] + m) )
 
     def fitness_funciton(self):
-        
-        df2 = self.get_stimulation_stats("df")
-        df2["gradient_magnitude"] = abs(df2["gradient_magnitude"])
-        return df2["gradient_magnitude"].sum()
-
-     #   print(f"alleged final pos:{self.pos_x, self.pos_y} ")
-
-     #   objective = [200,50]
-      #  difference = np.abs(np.array([self.pos_x, self.pos_y]) - objective)
-
-       # return difference.mean()
         """
         Function to be implemented for the RL agent to evalutae the fitness of the cell,
         it is up to the user to implement depending on the training purpose. An example is provided 
         here in this branch.
         """
-        pass
+
+        df2 = self.get_stimulation_stats("df")
+        df2["gradient_magnitude"] = abs(df2["gradient_magnitude"])
+        return df2["gradient_magnitude"].sum()
+
 
     def update_pos(self, grid_size, step = 1):
 
@@ -478,12 +471,12 @@ RL_Training = True
 
 if RL_Training:
 
-    epochs = 10
-    time_step_per_epoch = 8
+    epochs = 10     # Training Epochs or generations
+    time_step_per_epoch = 8     
     num_agents = 4
-    avg_fitness = 0
+    avg_fitness = 0         # Starter instantitation
     fitness = []
-    avg_values = []
+    avg_values = []         # Will hold average values of top agents w.r.t to some training parameter
 
     for epoch in range(1, epochs):
 
@@ -500,25 +493,27 @@ if RL_Training:
 
         if epoch == 1:
             avg_fitness = 0
-            init_deg_rates = np.linspace(1, max_temp, num_cells)
+            init_deg_rates = np.linspace(1, max_temp, num_cells)    #Generate initial degradation rates
            # p_secretion = np.linspace(0, 1, num_cells)
             print("Epoch 1")
             cells = [ Cell_2 ( u, nodes - int(nodes/ 4), nodes - int( nodes / 4) , degradation_rate=init_deg_rates[_], secretion = False, RL_attributes = learned_attributes ) for _ in range(num_cells) ]
-            
+            #Generate first generation of cell agents
         else:
             avg_fitness = np.sum([c.fitness_funciton() for c in cells]) / num_cells
+            #Evaluate the average fitness of the cells
             print(f"\n Epoch {epoch}")
-            most_fit_cells = sorted(cells, key=lambda cell: cell.fitness_funciton())[:3]  # Most fit cell
+            most_fit_cells = sorted(cells, key=lambda cell: cell.fitness_funciton())[:3]  # Get fittest cells
             
-            avg_degradation_rate = max(0, sum( [c.degradation_rate for c in most_fit_cells] ) / len(most_fit_cells) )
+            avg_degradation_rate = max(0, sum( [c.degradation_rate for c in most_fit_cells] ) / len(most_fit_cells) ) 
+            # Get the average degradation rate of top 3 cells ensuring it is not below 0
             avg_values.append(avg_degradation_rate)
           #  avg_secretion_prob = min(max(0, sum([c.p_secrete for c in most_fit_cells ]) / len(most_fit_cells)) 1)
 
 
-            rates = [max(0.1, avg_degradation_rate * ( 1+ (_ * 0.1))  ) for _ in range (num_cells) ]
+            rates = [max(0.1, avg_degradation_rate * ( 1+ (_ * 0.1))  ) for _ in range (num_cells) ]    #Generate new degradation rates
            # probs = [ min (0, max(0.1, avg_secretion_prob * ( 1+ (_ * 0.1))  )) for _ in range (num_cells) ] 
             
-
+            # Create next generation of cells
             cells = [ Cell_2 ( u, nodes - int(nodes/ 4), nodes - int( nodes / 4), secretion=False, degradation_rate= rates[_]) for _ in range(0, num_cells -1) ]
 
         counter = 0 
