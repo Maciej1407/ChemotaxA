@@ -52,7 +52,7 @@ git checkout <branch-name>
 To run the main simulation:
 
 ```bash
-python CompPra_V2.py
+python simulation.py
 ```
 
 This will execute a reinforcement learning simulation where agents adapt their behavior over multiple epochs.
@@ -69,21 +69,19 @@ Key parameters are defined in the script and can be modified to suit specific ne
 
 The simulation provides real-time visualization of the chemoattractant field and agent dynamics. At the end of the simulation, you can also plot:
 
-- Fitness over time: Displays how the average fitness of agents evolves during training.
+- Fitness over time: Displays how the average fitness of agents evolves during training
+- Cell Paths over time: Displays a static graph displaying cell movements
+- Simulation Statistics: Look at cell properties over time of the simulation e.g. Gradient Field Concentration V.S. Effective Stimulus
 
 ```python
 # Example of fitness plotting
-plt.plot(range(1, epochs), fitness_over_time, marker='o', label='Average Fitness')
-plt.xlabel('Epoch')
-plt.ylabel('Average Fitness')
-plt.title('Fitness Over Time During Reinforcement Learning')
-plt.legend()
-plt.show()
+plot_cell_history(cell.get_pos_history("df") )
+
+#Example plotting Effective Stimulus compared to Gradient Concentration over time
+plot_statistics(df, columns = ["time_step", "effective_stimulus", "gradient_magnitude"], polynomial_fit=True, degree=3)
 ```
 
 ## Known Issues
-
-- Agents may exhibit unexpected movement patterns due to gradient calculation biases. See `compute_gradient` for potential fixes.
 - The `refactor_RL` branch contains experimental features and may produce unstable results.
 
 ## Contributing
@@ -108,12 +106,12 @@ This project is licensed
 
 ## Contact
 
-For questions or suggestions, please create an issue or reach out at [dmcbmkm@ucl.ac.uk).
+For questions or suggestions, please create an issue or reach out at (dmcbmkm@ucl.ac.uk).
 
 
 # PyChemoTax: Function Descriptions
 
-This document provides a detailed description of the key functions used in the PyChemoTax framework. Each function plays a vital role in enabling the simulation of chemotaxis-driven cellular dynamics and reinforcement learning.
+This document provides a description of the key functions used in the PyChemoTax framework. Each function plays a vital role in enabling the simulation of chemotaxis-driven cellular dynamics and reinforcement learning.
 
 ## Core Functions
 
@@ -138,12 +136,12 @@ This document provides a detailed description of the key functions used in the P
 - `radius` (int): Circle radius.
 
 **Returns**:
-- List of points within the circle.
+- Numpy matrix of points within circle
 
 ---
 
 ### 3. `_compute_gradient(pos_x, pos_y, u, dx, dy, step=1)`
-**Purpose**: Calculates the gradient of a chemoattractant field at a given position using central differences.
+**Purpose**: Calculates the local cell gradient of a chemoattractant field at a given position using central differences.
 
 **Parameters**:
 - `pos_x` (int): x-coordinate.
@@ -176,10 +174,12 @@ A class representing a chemotactic cell in the simulation.
 
 **Key Attributes**:
 - `grid` (ndarray): Simulation grid.
-- `pos_x`, `pos_y` (int): Cell's current position.
+- `pos_x`, `pos_y` (int): Cell's starting position.
 - `shape` (list): Defines the cell's shape (circle or custom).
 - `degradation_area` (int): Size of the degradation area.
 - `secretion` (bool): Whether the cell secretes attractant.
+- `nR` (int): Defines the number of receptors the cell contains
+- `k_cat` (float): Defines the catalytic constant per receptor
 
 ---
 
@@ -197,11 +197,7 @@ Calculates the fitness score of a cell based on gradient magnitude.
 #### `get_position_history(type="list")`
 Retrieves the history of the cell's positions in a specified format (list, dataframe, or dictionary).
 
----
-
-## Helper Functions
-
-### 1. `calc_grad_np(u)`
+#### `calc_grad_np(u)`
 **Purpose**: Computes the diffusion of chemoattractant across the grid.
 
 **Parameters**:
@@ -210,10 +206,8 @@ Retrieves the history of the cell's positions in a specified format (list, dataf
 **Returns**:
 - Updated field matrix after diffusion.
 
----
-
-### 2. `update_cell(c, u, dx, dy, counter, dt, grid_size)`
-**Purpose**: Updates the state of a single cell, including its position and degradation behavior.
+### `update_cell(c, u, dx, dy, counter, dt, grid_size)`
+**Purpose**: Updates the state of a single cell, including its position and degradation behavior. This function is decorated with the Dask's 'Delayed' decorator. The process runs in parallel with other instantiated agents
 
 **Parameters**:
 - `c` (Cell_2): Cell object.
@@ -226,7 +220,18 @@ Retrieves the history of the cell's positions in a specified format (list, dataf
 - Updated cell object.
 
 ---
+## Helper Functions
 
+#### `merge_cell_pos_df`
+**Purpose** Merges dataframes of cell's movement data into a single dataframe
+
+**Parameters**:
+- `cells` (Array [Cell]): Array containing the Cell's whose positional dataframes are to be merged
+- `on= "time_step"` (String): Which column to merge dataframes on, default = "time_step"
+
+
+
+---
 ## Reinforcement Learning Functions
 
 ### 1. `fitness_function()`
