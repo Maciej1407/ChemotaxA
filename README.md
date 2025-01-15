@@ -29,9 +29,11 @@ cd ChemotaxA
 ```
 
 Install dependencies:
+(in CondaReq File Path)
 ```bash
 conda create --name <env> --file requirements.txt
 ```
+(in PipReq File Path)
 ```bash
 pip install -r requirements.txt
 ```
