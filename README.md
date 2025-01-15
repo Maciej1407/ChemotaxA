@@ -24,8 +24,8 @@ You are free to share and adapt this code for non-commercial purposes, provided 
 Clone the repository and navigate to the project directory:
 
 ```bash
-git clone https://github.com/<your-repo-name>/pychemotax.git
-cd pychemotax
+git clone https://github.com/<your-repo-name>/#ChemotaxA.git
+cd ChemotaxA
 ```
 
 Install dependencies:
