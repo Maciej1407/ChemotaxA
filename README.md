@@ -29,7 +29,9 @@ cd ChemotaxA
 ```
 
 Install dependencies:
-
+```bash
+conda create --name <env> --file requirements.txt
+```
 ```bash
 pip install -r requirements.txt
 ```
