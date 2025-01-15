@@ -314,10 +314,10 @@ k_off = 10e4 # s^-1
 K_d = k_off / k_on # M
 
 alpha = 50
-length = 400
+length = 1000
 sim_time = 50
-nodes = 250
-num_cells= 3
+nodes = 500
+num_cells= 50
 
 dx = length / nodes
 dy= length / nodes
@@ -336,7 +336,7 @@ max_temp = 100
 
 u[:,-1:-10] = max_temp
 #u[:,int(nodes*0.75):]= max_temp
-u[0:75,:] = max_temp
+u[0:150,:] = max_temp
 #u[ int(len(u)/2): int(len(u)/2)] = 100
 
 center_x, center_y = nodes // 2, nodes // 2
@@ -361,11 +361,11 @@ plt.colorbar(pcm, ax=axis)
 #cells = [Cell( int(nodes/ 2),int( nodes / 2)) for _ in range(num_cells)]
 
 #cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), shape= ["circle", 3], degradation_area = 10) for _ in range(num_cells)]
-cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=False, degradation_area=2) for _ in range(1)]
+cells = [Cell_2( u, int(nodes/ 2), int( nodes / 2), secretion=False, degradation_area=2) for _ in range(num_cells)]
 
-cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",3], degradation_area=4))
-cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",2], degradation_area=2))
-cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",5], degradation_area=5))
+#cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",3], degradation_area=4))
+#cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",2], degradation_area=2))
+#cells.append( Cell_2(u, int(nodes/2), int(nodes/2),secretion=False, shape=["circle",5], degradation_area=5))
 
 counter = 0 
 cellMarker = []
@@ -439,7 +439,7 @@ while counter < sim_time : # O(t)
             print(cell.points)
         exit(1)
  
-    plt.pause(0.01)
+    plt.pause(0.000001)
     counter += dt
     
 end = time.time()
