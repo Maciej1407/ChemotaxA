@@ -323,7 +323,7 @@ dx = length / nodes
 dy= length / nodes
 
 
-dt = min(dx**2 / (4*alpha), dy**2 / (4/alpha))
+dt = min(dx**2 / (4*alpha), dy**2 / (4*alpha))
 
 t_nodes = int(sim_time/dt)
 
@@ -343,6 +343,7 @@ center_x, center_y = nodes // 2, nodes // 2
 radius = 15  # Radius of high temperature region
 
 
+## Circular concentration instantiation
 
 #u[center_x - radius:center_x + radius, center_y - radius:center_y + radius] = max_temp
 # centre circle
@@ -399,6 +400,7 @@ def update_cell(c, u, dx, dy, counter, dt, grid_size):
 
 
         #u[c.degArea[:,1], c.degArea[:,0]] = u[c.degArea[:,1], c.degArea[:,0]] / 10
+
     else:
         u[c.pos_x, c.pos_y] =  u[c.pos_x, c.pos_y] / 10
         if c.secrete:
@@ -420,7 +422,7 @@ while counter < sim_time : # O(t)
 
     tasks = [ delayed (update_cell)(c, u, dx, dy, counter, dt, u.shape) for c in cells ]
         
-    
+    # Parallel Processing
     results = dask.compute(*tasks)
 
     print("t: {:.3f} [s], Concentration {:.2f} %".format(counter, np.average(u)))
@@ -446,7 +448,4 @@ FINAL = end - start
 
 print(f'Total Execution Time: {FINAL}')
 
-#plt.show()
-
-
-#print(cells[0].get_position_history())
+plt.show() # Displau End State
