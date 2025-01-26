@@ -34,9 +34,9 @@ cd ChemotaxA
 Install dependencies:
 (in CondaReq File Path)
 ```bash
-conda create --name <env> --file requirements.txt
+conda env create -f environment.yml
 ```
-(in PipReq File Path)
+( (OPTIONAL) Simulation.py is compatible without Conda / Jupyter, for this alone use (PipReq). You should be able to run all the code with the conda environment)
 ```bash
 pip install -r requirements.txt
 ```
