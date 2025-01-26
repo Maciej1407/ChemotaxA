@@ -1,4 +1,4 @@
-name: eff
+name: PyChemoTax
 channels:
   - defaults
   - conda-forge
