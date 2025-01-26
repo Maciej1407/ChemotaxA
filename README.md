@@ -46,7 +46,7 @@ conda env create -f environment.yml
 ```bash
 pip install -r requirements.txt
 ```
-### Installation Considerations
+### Installation Considerations (Important)
 Due to differences in OS / CPU Architecture (this codebase was made using Apple Silicon), there may be issues regarding the yml files and requirements. If this is the case please use the following instrucitons.
 
 - Create a conda environment with python 3.12
