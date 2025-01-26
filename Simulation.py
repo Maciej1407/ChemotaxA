@@ -314,10 +314,10 @@ k_off = 10e4 # s^-1
 K_d = k_off / k_on # M
 
 alpha = 50
-length = 1000
-sim_time = 50
-nodes = 500
-num_cells= 50
+length = 400
+sim_time = 5
+nodes = 250
+num_cells= 10
 
 dx = length / nodes
 dy= length / nodes
@@ -336,7 +336,7 @@ max_temp = 100
 
 u[:,-1:-10] = max_temp
 #u[:,int(nodes*0.75):]= max_temp
-u[0:150,:] = max_temp
+u[0:100,:] = max_temp
 #u[ int(len(u)/2): int(len(u)/2)] = 100
 
 center_x, center_y = nodes // 2, nodes // 2
@@ -382,7 +382,7 @@ def calc_grad_np(u):
     )
     return w
 
-@delayed
+#@delayed
 def update_cell(c, u, dx, dy, counter, dt, grid_size):
     
     c.update_pos_grad(u, dx, dy, 0.5, counter, dt, grid_size)
@@ -420,12 +420,14 @@ while counter < sim_time : # O(t)
 
     u = calc_grad_np(u) 
 
-    tasks = [ delayed (update_cell)(c, u, dx, dy, counter, dt, u.shape) for c in cells ]
+    for c in cells: 
+        c=update_cell(c, u, dx, dy, counter, dt, u.shape)
         
     # Parallel Processing
-    results = dask.compute(*tasks)
+    #results = dask.compute(*tasks)
+    #tasks = [ delayed (update_cell)(c, u, dx, dy, counter, dt, u.shape) for c in cells ]
 
-    print("t: {:.3f} [s], Concentration {:.2f} %".format(counter, np.average(u)))
+   # print("t: {:.3f} [s], Concentration {:.2f} %".format(counter, np.average(u)))
 
     pcm.set_array(u)
     axis.set_title("Distribution at t: {:.3f} [s].".format(counter))
