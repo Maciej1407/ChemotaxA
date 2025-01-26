@@ -26,20 +26,40 @@ You are free to share and adapt this code for non-commercial purposes, provided 
 
 Clone the repository and navigate to the project directory:
 
+HTTPS
 ```bash
-git clone https://github.com/<your-repo-name>/#ChemotaxA.git
+git clone https://github.com/Maciej1407/ChemotaxA.git
+cd ChemotaxA
+```
+If using SSH
+```bash
+git clone git@github.com:Maciej1407/ChemotaxA.git
 cd ChemotaxA
 ```
 
 Install dependencies:
 (in CondaReq File Path)
 ```bash
-conda create --name <env> --file requirements.txt
+conda env create -f environment.yml
 ```
-(in PipReq File Path)
+( (OPTIONAL) Simulation.py is compatible without Conda / Jupyter, for this alone use (PipReq). You should be able to run all the code with the conda environment)
 ```bash
 pip install -r requirements.txt
 ```
+### Installation Considerations (Important)
+Due to differences in OS / CPU Architecture (this codebase was made using Apple Silicon), there may be issues regarding the yml files and requirements. If this is the case please use the following instrucitons.
+
+- Create a conda environment with python 3.12
+- Install the following package:
+- - Numba
+- - Numpy
+- - Pandas
+- - Matplotlib
+- - Plotly / Plotly.express
+- - Dask
+- - Seaborn 
+- - Jupyter
+
 
 ## Branches
 
