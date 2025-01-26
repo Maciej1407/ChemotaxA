@@ -26,8 +26,14 @@ You are free to share and adapt this code for non-commercial purposes, provided 
 
 Clone the repository and navigate to the project directory:
 
+HTTPS
 ```bash
-git clone https://github.com/<your-repo-name>/#ChemotaxA.git
+git clone https://github.com/Maciej1407/ChemotaxA.git
+cd ChemotaxA
+```
+If using SSH
+```bash
+git clone git@github.com:Maciej1407/ChemotaxA.git
 cd ChemotaxA
 ```
 
